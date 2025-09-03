@@ -108,20 +108,22 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	bufLen := 0
 	for !request.done() {
+
+		// Reading into the buffer
 		n, err := reader.Read(buf[bufLen:])
-		// TODO: what do to with error
-		if err != nil {
+		if err != nil { // TODO: what do to with error
 			return nil, err
 		}
-
 		bufLen += n
 
-		// readN: how many bytes (from starting/idx 0) it successfully consumed
+		// parsing the buffer
 		readN, err := request.parse(buf[:bufLen])
+		// readN: how many bytes (from starting/idx 0) it successfully consumed
 		if err != nil {
 			return nil, err
 		}
 
+		// remove the data that is parsed to save memory
 		copy(buf, buf[readN:bufLen])
 		bufLen -= readN
 	}
