@@ -1,6 +1,7 @@
 package request
 
 import (
+	"chetanhttpserver/internal/request"
 	"errors"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 )
 
 type ParserState string
+
 const (
 	StateInit ParserState = "init"
 	StateDone ParserState = "done"
@@ -28,7 +30,13 @@ var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request-line")
 var ERROR_UNSUPPORTED_HTTP_VERSION = fmt.Errorf("unsupported http version")
 var SEPERATOR = "\r\n"
 
-// returns the parsed request line and the number of bytes it consumed 
+func newRequest() *Request {
+	return &Request{
+		ParserState: StateInit,
+	}
+}
+
+// returns the parsed request line and the number of bytes it consumed
 func parseRequestLine(b string) (*RequestLine, int, error) {
 	idx := strings.Index(b, SEPERATOR)
 
@@ -56,24 +64,50 @@ func parseRequestLine(b string) (*RequestLine, int, error) {
 	return rl, restOfMsg, nil
 }
 
+func (r *Request) parse(data []byte) (int, error) {
+	read := 0
+	
+outer:
+	for {
+		switch r.ParserState{
+		case StateInit:
+		case StateDone:
+			break outer
+		}
+	}
+
+	return read, nil
+
+}
+
+func (r *Request) done() bool {
+	return r.ParserState == StateDone
+}
+
 func RequestFromReader(reader io.Reader) (*Request, error) {
-	data, err := io.ReadAll(reader)
+	request := newRequest()
+	// NOTE: buffer could overrun (a header or body that exceeds 1k bytes)
+	buf := make([]byte, 1024)
 
-	if err != nil {
-		return nil, errors.Join(
-			fmt.Errorf("unable to io.ReadAll"),
-			err,
-		)
+	bufLen := 0
+	for !request.done() {
+		n, err := reader.Read(buf[bufLen:])
+		// TODO: what do to with error
+		if err != nil {
+			return nil, err
+		}
+
+		bufLen += n
+
+		// readN: how many bytes (from starting/idx 0) it successfully consumed
+		readN, err := request.parse(buf[:bufLen])
+		if err != nil {
+			return nil, err
+		}
+
+		copy(buf, buf[readN:bufLen])
+		bufLen -= readN
 	}
 
-	str := string(data)
-	rl, _, err := parseRequestLine(str)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &Request{
-		RequestLine: *rl,
-	}, nil
+	return request, nil
 }
