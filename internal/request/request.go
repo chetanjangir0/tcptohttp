@@ -1,11 +1,9 @@
 package request
 
 import (
-	"chetanhttpserver/internal/request"
-	"errors"
+	"bytes"
 	"fmt"
 	"io"
-	"strings"
 )
 
 type ParserState string
@@ -28,7 +26,7 @@ type Request struct {
 
 var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request-line")
 var ERROR_UNSUPPORTED_HTTP_VERSION = fmt.Errorf("unsupported http version")
-var SEPERATOR = "\r\n"
+var SEPERATOR = []byte("\r\n")
 
 func newRequest() *Request {
 	return &Request{
@@ -37,31 +35,31 @@ func newRequest() *Request {
 }
 
 // returns the parsed request line and the number of bytes it consumed
-func parseRequestLine(b string) (*RequestLine, int, error) {
-	idx := strings.Index(b, SEPERATOR)
+func parseRequestLine(b []byte) (*RequestLine, int, error) {
+	idx := bytes.Index(b, SEPERATOR)
 
 	if idx == -1 {
-		return nil, b, nil
+		return nil, 0, nil
 	}
 	requestLine := b[:idx]
-	restOfMsg := b[idx+len(SEPERATOR):]
+	read := idx+len(SEPERATOR)
 
-	parts := strings.Split(requestLine, " ")
+	parts := bytes.Split(requestLine, []byte(" "))
 	if len(parts) != 3 {
-		return nil, restOfMsg, ERROR_MALFORMED_REQUEST_LINE
+		return nil, 0, ERROR_MALFORMED_REQUEST_LINE
 	}
 
-	httpParts := strings.Split(parts[2], "/")
-	if len(httpParts) != 2 || httpParts[0] != "HTTP" || httpParts[1] != "1.1" {
-		return nil, restOfMsg, ERROR_MALFORMED_REQUEST_LINE
+	httpParts := bytes.Split(parts[2], []byte("/"))
+	if len(httpParts) != 2 || string(httpParts[0]) != "HTTP" || string(httpParts[1]) != "1.1" {
+		return nil, 0, ERROR_MALFORMED_REQUEST_LINE
 	}
 
 	rl := &RequestLine{
-		Method:        parts[0],
-		RequestTarget: parts[1],
-		HttpVersion:   httpParts[1],
+		Method:        string(parts[0]),
+		RequestTarget: string(parts[1]),
+		HttpVersion:   string(httpParts[1]),
 	}
-	return rl, restOfMsg, nil
+	return rl, read, nil
 }
 
 func (r *Request) parse(data []byte) (int, error) {
@@ -71,6 +69,18 @@ outer:
 	for {
 		switch r.ParserState{
 		case StateInit:
+			rl, n, err := parseRequestLine(data)
+			if err != nil {
+				return 0, err
+			}
+
+			// return what’s been read so far → wait for more input.
+			if n == 0 {
+			 	break outer
+			}
+
+			r.RequestLine = *rl
+			read += n
 		case StateDone:
 			break outer
 		}
