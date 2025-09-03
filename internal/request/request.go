@@ -11,6 +11,7 @@ type ParserState string
 const (
 	StateInit ParserState = "init"
 	StateDone ParserState = "done"
+	StateError ParserState = "error"
 )
 
 type RequestLine struct {
@@ -26,6 +27,7 @@ type Request struct {
 
 var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request-line")
 var ERROR_UNSUPPORTED_HTTP_VERSION = fmt.Errorf("unsupported http version")
+var ERROR_REQUEST_IN_ERROR_STATE = fmt.Errorf("request in error state")
 var SEPERATOR = []byte("\r\n")
 
 func newRequest() *Request {
@@ -68,9 +70,12 @@ func (r *Request) parse(data []byte) (int, error) {
 outer:
 	for {
 		switch r.ParserState{
+		case StateError:
+			return 0, ERROR_REQUEST_IN_ERROR_STATE 
 		case StateInit:
 			rl, n, err := parseRequestLine(data)
 			if err != nil {
+				r.ParserState = StateError
 				return 0, err
 			}
 
@@ -81,6 +86,8 @@ outer:
 
 			r.RequestLine = *rl
 			read += n
+			r.ParserState = StateDone
+
 		case StateDone:
 			break outer
 		}
@@ -91,7 +98,7 @@ outer:
 }
 
 func (r *Request) done() bool {
-	return r.ParserState == StateDone
+	return r.ParserState == StateDone || r.ParserState == StateError
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
