@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+type ParserState string
+const (
+	StateInit ParserState = "init"
+	StateDone ParserState = "done"
+)
+
 type RequestLine struct {
 	HttpVersion   string
 	RequestTarget string
@@ -15,14 +21,15 @@ type RequestLine struct {
 
 type Request struct {
 	RequestLine RequestLine
+	ParserState ParserState
 }
 
 var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request-line")
 var ERROR_UNSUPPORTED_HTTP_VERSION = fmt.Errorf("unsupported http version")
 var SEPERATOR = "\r\n"
 
-// returns the parsed request line and the rest of the request string
-func parseRequestLine(b string) (*RequestLine, string, error) {
+// returns the parsed request line and the number of bytes it consumed 
+func parseRequestLine(b string) (*RequestLine, int, error) {
 	idx := strings.Index(b, SEPERATOR)
 
 	if idx == -1 {
