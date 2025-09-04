@@ -21,6 +21,9 @@ func main() {
 		}
 
 		r, err := request.RequestFromReader(conn)
+		if err != nil{
+			log.Fatal("error", err)
+		}
 		fmt.Printf("Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n", r.RequestLine.Method, r.RequestLine.RequestTarget, r.RequestLine.HttpVersion)
 
 	}
