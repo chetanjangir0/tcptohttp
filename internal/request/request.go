@@ -2,6 +2,7 @@ package request
 
 import (
 	"bytes"
+	"chetanhttpserver/internal/headers"
 	"fmt"
 	"io"
 )
@@ -9,9 +10,10 @@ import (
 type ParserState string
 
 const (
-	StateInit ParserState = "init"
-	StateDone ParserState = "done"
-	StateError ParserState = "error"
+	StateInit    ParserState = "init"
+	StateDone    ParserState = "done"
+	StateHeaders ParserState = "headers"
+	StateError   ParserState = "error"
 )
 
 type RequestLine struct {
@@ -23,6 +25,7 @@ type RequestLine struct {
 type Request struct {
 	RequestLine RequestLine
 	ParserState ParserState
+	Headers     *headers.Headers
 }
 
 var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request-line")
@@ -33,6 +36,7 @@ var SEPERATOR = []byte("\r\n")
 func newRequest() *Request {
 	return &Request{
 		ParserState: StateInit,
+		Headers:     headers.NewHeaders(),
 	}
 }
 
@@ -44,7 +48,7 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 		return nil, 0, nil
 	}
 	requestLine := b[:idx]
-	read := idx+len(SEPERATOR)
+	read := idx + len(SEPERATOR)
 
 	parts := bytes.Split(requestLine, []byte(" "))
 	if len(parts) != 3 {
@@ -66,14 +70,15 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 
 func (r *Request) parse(data []byte) (int, error) {
 	read := 0
-	
+
 outer:
 	for {
-		switch r.ParserState{
+		currentData := data[read:]
+		switch r.ParserState {
 		case StateError:
-			return 0, ERROR_REQUEST_IN_ERROR_STATE 
+			return 0, ERROR_REQUEST_IN_ERROR_STATE
 		case StateInit:
-			rl, n, err := parseRequestLine(data)
+			rl, n, err := parseRequestLine(currentData)
 			if err != nil {
 				r.ParserState = StateError
 				return 0, err
@@ -81,15 +86,30 @@ outer:
 
 			// return what’s been read so far → wait for more input.
 			if n == 0 {
-			 	break outer
+				break outer
 			}
 
 			r.RequestLine = *rl
 			read += n
-			r.ParserState = StateDone
+			r.ParserState = StateHeaders
 
+		case StateHeaders:
+			n, done, err := r.Headers.Parse(currentData)
+			if err != nil {
+				return 0, err
+			}
+
+			if n == 0 {
+				break outer
+			}
+			read += n
+			if done {
+				r.ParserState = StateDone
+			}
 		case StateDone:
 			break outer
+		default:
+			panic("skill issue")
 		}
 	}
 
