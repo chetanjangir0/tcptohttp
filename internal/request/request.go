@@ -84,12 +84,21 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 	return rl, read, nil
 }
 
+func (r *Request) hasBody() bool {
+	// TODO: when doing chunked encoding update this method
+	length := getInt(r.Headers, "content-length", 0)
+	return length > 0
+}
+
 func (r *Request) parse(data []byte) (int, error) {
 	read := 0
 
 outer:
 	for {
 		currentData := data[read:]
+		if len(currentData) == 0 {
+			break outer
+		}
 		switch r.ParserState {
 		case StateError:
 			return 0, ERROR_REQUEST_IN_ERROR_STATE
@@ -112,6 +121,7 @@ outer:
 		case StateHeaders:
 			n, done, err := r.Headers.Parse(currentData)
 			if err != nil {
+				r.ParserState = StateError
 				return 0, err
 			}
 
@@ -119,14 +129,30 @@ outer:
 				break outer
 			}
 			read += n
+
+			// in real world we would not get EOF error after reading data
+			// therefore we would nicely transition to body, which would allow use to 
+			// transition to done, but i am doing the transtion here
+			// so we would not need to check for hasBody
 			if done {
-				r.ParserState = StateDone
+				if r.hasBody() {
+					r.ParserState = StateBody
+				} else {
+					r.ParserState = StateDone
+				}
 			}
 		case StateBody:
 			length := getInt(r.Headers, "content-length", 0)
 			if length == 0 {
+				panic("chunked not implemented")
+			}
+
+			remaining := min(length-len(r.Body), len(currentData))
+			r.Body += string(currentData[:remaining])
+			read += remaining
+
+			if len(r.Body) == length {
 				r.ParserState = StateDone
-				break
 			}
 
 		case StateDone:

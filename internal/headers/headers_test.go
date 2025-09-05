@@ -14,9 +14,18 @@ func TestHeaderParse(t *testing.T) {
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers.Get("Host"))
-	assert.Equal(t, "barbar", headers.Get("FooFoo"))
-	assert.Equal(t, "", headers.Get("MissingKey"))
+	host, ok := headers.Get("Host")
+	assert.Equal(t, "localhost:42069", host)
+	assert.True(t, ok)
+
+
+	foo, ok := headers.Get("FooFoo")
+	assert.Equal(t, "barbar", foo) 
+	assert.True(t, ok)
+
+
+	_, ok = headers.Get("Missingkey")
+	assert.False(t, ok)
 	assert.Equal(t, 51, n)
 	assert.True(t, done)
 
@@ -36,11 +45,15 @@ func TestHeaderParse(t *testing.T) {
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
 
-	// Test: appeand the value if key already exists 
+	// Test: appeand the value if key already exists
 	headers = NewHeaders()
 	data = []byte("Host: localhost:42069\r\nHost: localhost:42069\r\n\r\n")
 	n, done, err = headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069,localhost:42069", headers.Get("Host"))
+	
+	host, ok = headers.Get("Host")
+	assert.True(t, ok)
+	assert.Equal(t, "localhost:42069,localhost:42069", host) 
+	assert.True(t, done)
 }
