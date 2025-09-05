@@ -60,8 +60,14 @@ func isToken(str []byte) bool {
 func (h *Headers) Get(name string) string {
 	return h.headers[strings.ToLower(name)]
 }
+
 func (h *Headers) Set(name, val string) {
-	h.headers[strings.ToLower(name)] = val
+	name = strings.ToLower(name)
+
+	if oldVal, ok := h.headers[name]; ok{
+		val = oldVal + "," + val
+	}
+	h.headers[name] = val
 }
 
 func (h *Headers) Parse(data []byte) (int, bool, error) {
