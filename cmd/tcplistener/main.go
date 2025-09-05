@@ -21,12 +21,19 @@ func main() {
 		}
 
 		r, err := request.RequestFromReader(conn)
-		if err != nil{
+		if err != nil {
 			log.Fatal("error", err)
 		}
-		fmt.Printf("Request line:\n- Method: %s\n- Target: %s\n- Version: %s\n", r.RequestLine.Method, r.RequestLine.RequestTarget, r.RequestLine.HttpVersion)
+		fmt.Printf("Request line:\n")
+		fmt.Printf("- Method: %s\n", r.RequestLine.Method)
+		fmt.Printf("- Target: %s\n", r.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\n", r.RequestLine.HttpVersion)
+
+		fmt.Println("Headers:")
+		r.Headers.ForEach(func(n, v string) {
+			fmt.Printf("- %s: %s\n", n, v)
+		})
 
 	}
 
 }
-

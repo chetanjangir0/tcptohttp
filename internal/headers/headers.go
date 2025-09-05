@@ -57,6 +57,12 @@ func isToken(str []byte) bool {
 	return true
 }
 
+func (h *Headers) ForEach(cb func(n,v string)) {
+	for n, v := range h.headers {
+		cb(n, v)
+	} 
+}
+
 func (h *Headers) Get(name string) string {
 	return h.headers[strings.ToLower(name)]
 }
