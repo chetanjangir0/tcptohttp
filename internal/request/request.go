@@ -5,6 +5,7 @@ import (
 	"chetanhttpserver/internal/headers"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 type ParserState string
@@ -12,6 +13,7 @@ type ParserState string
 const (
 	StateInit    ParserState = "init"
 	StateDone    ParserState = "done"
+	StateBody    ParserState = "body"
 	StateHeaders ParserState = "headers"
 	StateError   ParserState = "error"
 )
@@ -26,6 +28,7 @@ type Request struct {
 	RequestLine RequestLine
 	ParserState ParserState
 	Headers     *headers.Headers
+	Body        string
 }
 
 var ERROR_MALFORMED_REQUEST_LINE = fmt.Errorf("malformed request-line")
@@ -33,10 +36,23 @@ var ERROR_UNSUPPORTED_HTTP_VERSION = fmt.Errorf("unsupported http version")
 var ERROR_REQUEST_IN_ERROR_STATE = fmt.Errorf("request in error state")
 var SEPERATOR = []byte("\r\n")
 
+func getInt(headers *headers.Headers, name string, defaultValue int) int {
+	valueStr, exists := headers.Get(name)
+	if !exists {
+		return defaultValue
+	}
+	value, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return defaultValue
+	}
+	return value
+}
+
 func newRequest() *Request {
 	return &Request{
 		ParserState: StateInit,
 		Headers:     headers.NewHeaders(),
+		Body:        "",
 	}
 }
 
@@ -106,6 +122,13 @@ outer:
 			if done {
 				r.ParserState = StateDone
 			}
+		case StateBody:
+			length := getInt(r.Headers, "content-length", 0)
+			if length == 0 {
+				r.ParserState = StateDone
+				break
+			}
+
 		case StateDone:
 			break outer
 		default:
