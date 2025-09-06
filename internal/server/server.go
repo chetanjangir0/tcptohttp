@@ -1,6 +1,7 @@
 package server
 
 import (
+	"chetanhttpserver/internal/response"
 	"fmt"
 	"io"
 	"net"
@@ -10,10 +11,12 @@ type Server struct {
 	closed bool
 }
 
-func runConnection(conn io.ReadWriteCloser) {
-	out := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello World!")
-	conn.Write(out)
-	conn.Close() // only close this conn not the server
+func runConnection(_s *Server, conn io.ReadWriteCloser) {
+	defer conn.Close() // only closing this conn not the server
+
+	headers := response.GetDefaultHeaders(0)
+	response.WriteStatusLine(conn, response.StatusOK) 
+	response.WriteHeaders(conn, headers) 
 }
 
 func runServer(s *Server, listener net.Listener) {
@@ -30,7 +33,7 @@ func runServer(s *Server, listener net.Listener) {
 
 		// to handle multiple requests
 		go func() {
-			runConnection(conn)
+			runConnection(s, conn)
 		}()
 	}
 }

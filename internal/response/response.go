@@ -19,7 +19,7 @@ const (
 	StatusInternalServerError StatusCode = 500
 )
 
-func getDefaultHeaders(contentLen int) *headers.Headers {
+func GetDefaultHeaders(contentLen int) *headers.Headers {
 	h := headers.NewHeaders()
 	h.Set("Content-Length", strconv.Itoa(contentLen))
 	h.Set("Connection", "close") 
@@ -40,11 +40,11 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	statusLine := []byte{}
 	switch statusCode {
 	case StatusOK:
-		statusLine = []byte("HTTP/1.1 200 OK")
+		statusLine = []byte("HTTP/1.1 200 OK\r\n")
 	case StatusBadRequest:
-		statusLine = []byte("HTTP/1.1 400 Bad Request")
+		statusLine = []byte("HTTP/1.1 400 Bad Request\r\n")
 	case StatusInternalServerError:
-		statusLine = []byte("HTTP/1.1 500 Internal Server Error")
+		statusLine = []byte("HTTP/1.1 500 Internal Server Error\r\n")
 	default:
 		return fmt.Errorf("unrecognized error code")
 	}
