@@ -34,6 +34,9 @@ func main() {
 			fmt.Printf("- %s: %s\n", n, v)
 		})
 
+		fmt.Println("Body:")
+		fmt.Printf("%s\n", r.Body)
+
 	}
 
 }

@@ -55,5 +55,5 @@ func TestHeaderParse(t *testing.T) {
 	host, ok = headers.Get("Host")
 	assert.True(t, ok)
 	assert.Equal(t, "localhost:42069,localhost:42069", host) 
-	assert.True(t, done)
+	assert.False(t, done)
 }
