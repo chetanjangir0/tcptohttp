@@ -27,6 +27,15 @@ func getDefaultHeaders(contentLen int) *headers.Headers {
 	return h
 }
 
+func WriteHeaders(w io.Writer, h *headers.Headers) error {
+	b := []byte{}
+	h.ForEach(func (n, v string) {
+		b = fmt.Appendf(b, "%s: %s\r\n", n, v)
+	})
+	_, err := w.Write(b)
+	return err
+}
+
 func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	statusLine := []byte{}
 	switch statusCode {
