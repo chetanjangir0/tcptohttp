@@ -1,8 +1,10 @@
 package response
 
 import (
+	"chetanhttpserver/internal/headers"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 type Response struct {
@@ -16,6 +18,14 @@ const (
 	StatusBadRequest          StatusCode = 400
 	StatusInternalServerError StatusCode = 500
 )
+
+func getDefaultHeaders(contentLen int) *headers.Headers {
+	h := headers.NewHeaders()
+	h.Set("Content-Length", strconv.Itoa(contentLen))
+	h.Set("Connection", "close") 
+	h.Set("Content-Type", "text/plain") 
+	return h
+}
 
 func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	statusLine := []byte{}
