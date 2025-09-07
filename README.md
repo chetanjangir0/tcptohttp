@@ -52,4 +52,4 @@ Visit http://localhost:42069 or test with curl.
 
 ## License
 
-MIT (or your choice).
+MIT 
