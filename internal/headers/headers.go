@@ -57,10 +57,10 @@ func isToken(str []byte) bool {
 	return true
 }
 
-func (h *Headers) ForEach(cb func(n,v string)) {
+func (h *Headers) ForEach(cb func(n, v string)) {
 	for n, v := range h.headers {
 		cb(n, v)
-	} 
+	}
 }
 
 func (h *Headers) Get(name string) (string, bool) {
@@ -73,10 +73,15 @@ func (h *Headers) Replace(name, val string) {
 	h.headers[name] = val
 }
 
+func (h *Headers) Delete(name string) {
+	name = strings.ToLower(name)
+	delete(h.headers, name)
+}
+
 func (h *Headers) Set(name, val string) {
 	name = strings.ToLower(name)
 
-	if oldVal, ok := h.headers[name]; ok{
+	if oldVal, ok := h.headers[name]; ok {
 		val = oldVal + "," + val
 	}
 	h.headers[name] = val

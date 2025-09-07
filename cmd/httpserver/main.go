@@ -6,8 +6,10 @@ import (
 	"chetanhttpserver/internal/server"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -57,17 +59,46 @@ func main() {
 		body := respond200()
 		status := response.StatusOK
 
-		switch req.RequestLine.RequestTarget {
-		case "/yourproblem":
+		if req.RequestLine.RequestTarget == "/yourproblem" {
 			body = respond400()
 			status = response.StatusBadRequest
-		case "/myproblem":
+
+		} else if req.RequestLine.RequestTarget == "/myproblem" {
 			body = respond500()
 			status = response.StatusBadRequest
+
+		} else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/stream") {
+			// https://httpbin.org/stream/100 streams 100 JSON responses back to our server,
+			// making it a great way for us to test our chunked response implementation.
+			target := req.RequestLine.RequestTarget
+			res, err := http.Get("https://httpbin.org" + target[len("/httpbin"):])
+			if err != nil {
+				fmt.Println("hello from err")
+				body = respond500()
+				status = response.StatusInternalServerError
+			} else {
+				w.WriteStatusLine(response.StatusOK)
+				h.Delete("Content-Length")
+				h.Set("Transfer-encoding", "chunked")
+				h.Replace("Content-Type", "text/plain")
+				w.WriteHeaders(*h)
+				for {
+					data := make([]byte, 32)
+					n, err := res.Body.Read(data)
+					if err != nil {
+						break
+					}
+					w.WriteBody([]byte(fmt.Sprintf("%x\r\n", n))) // to convert to hexadecimal
+					w.WriteBody(data[:n])
+					w.WriteBody([]byte("\r\n"))
+				}
+				w.WriteBody([]byte("0\r\n\r\n"))
+				return
+			}
 		}
 
 		h.Replace("Content-Length", fmt.Sprintf("%d", len(body)))
-		h.Replace("Content-Type", "text/html") 
+		h.Replace("Content-Type", "text/html")
 		w.WriteStatusLine(status)
 		w.WriteHeaders(*h)
 		w.WriteBody(body)
