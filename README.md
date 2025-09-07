@@ -50,13 +50,6 @@ Visit http://localhost:42069 or test with curl.
 
 ---
 
-## Next Steps
-
-- More HTTP methods and status codes.  
-- Keep-alive connections.  
-
----
-
 ## License
 
 MIT (or your choice).
