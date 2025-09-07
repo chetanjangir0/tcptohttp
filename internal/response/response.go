@@ -56,6 +56,7 @@ func (w *Writer) WriteHeaders(h headers.Headers) error {
 	h.ForEach(func(n, v string) {
 		b = fmt.Appendf(b, "%s: %s\r\n", n, v)
 	})
+	b = append(b, []byte("\r\n")...)
 	_, err := w.writer.Write(b)
 	return err
 }
