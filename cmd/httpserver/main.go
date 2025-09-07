@@ -1,9 +1,11 @@
 package main
 
 import (
+	"chetanhttpserver/internal/headers"
 	"chetanhttpserver/internal/request"
 	"chetanhttpserver/internal/response"
 	"chetanhttpserver/internal/server"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +14,14 @@ import (
 	"strings"
 	"syscall"
 )
+
+func toStr(bytes []byte) string  {
+	out := ""
+	for _, b := range bytes {
+		out += fmt.Sprintf("%02x", b)
+	}	
+	return out
+}
 
 // this is how the user who uses our library will use it
 
@@ -81,18 +91,28 @@ func main() {
 				h.Delete("Content-Length")
 				h.Set("Transfer-encoding", "chunked")
 				h.Replace("Content-Type", "text/plain")
+				h.Set("Trailer","X-Content-SHA256")
+				h.Set("Trailer","X-Content-Length")
 				w.WriteHeaders(*h)
+
+				fullBody := []byte{}
 				for {
 					data := make([]byte, 32)
 					n, err := res.Body.Read(data)
 					if err != nil {
 						break
 					}
+					fullBody = append(fullBody, data[:n]...)
 					w.WriteBody([]byte(fmt.Sprintf("%x\r\n", n))) // to convert to hexadecimal
 					w.WriteBody(data[:n])
 					w.WriteBody([]byte("\r\n"))
 				}
-				w.WriteBody([]byte("0\r\n\r\n"))
+				w.WriteBody([]byte("0\r\n"))
+				trailers := headers.NewHeaders()
+				out := sha256.Sum256(fullBody)
+				trailers.Set("X-Content-SHA256", toStr(out[:]))
+				trailers.Set("X-Content-Length", fmt.Sprintf("%d",len(fullBody))) 
+				w.WriteHeaders(*trailers)
 				return
 			}
 		}
