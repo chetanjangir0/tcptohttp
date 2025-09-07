@@ -15,11 +15,11 @@ import (
 	"syscall"
 )
 
-func toStr(bytes []byte) string  {
+func toStr(bytes []byte) string {
 	out := ""
 	for _, b := range bytes {
 		out += fmt.Sprintf("%02x", b)
-	}	
+	}
 	return out
 }
 
@@ -77,13 +77,25 @@ func main() {
 			body = respond500()
 			status = response.StatusBadRequest
 
+		} else if req.RequestLine.RequestTarget == "/video" {
+			f, err := os.ReadFile("assets/vim.mp4")
+			if err != nil {
+				body = respond500()
+				status = response.StatusInternalServerError
+			} else {
+				h.Replace("Content-Type", "video/mp4")
+				h.Replace("Content-Length", fmt.Sprintf("%d",len(f)))
+				w.WriteStatusLine(response.StatusOK)
+				w.WriteHeaders(*h)
+				w.WriteBody(f)
+			}
+
 		} else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/stream") {
 			// https://httpbin.org/stream/100 streams 100 JSON responses back to our server,
 			// making it a great way for us to test our chunked response implementation.
 			target := req.RequestLine.RequestTarget
 			res, err := http.Get("https://httpbin.org" + target[len("/httpbin"):])
 			if err != nil {
-				fmt.Println("hello from err")
 				body = respond500()
 				status = response.StatusInternalServerError
 			} else {
@@ -91,8 +103,8 @@ func main() {
 				h.Delete("Content-Length")
 				h.Set("Transfer-encoding", "chunked")
 				h.Replace("Content-Type", "text/plain")
-				h.Set("Trailer","X-Content-SHA256")
-				h.Set("Trailer","X-Content-Length")
+				h.Set("Trailer", "X-Content-SHA256")
+				h.Set("Trailer", "X-Content-Length")
 				w.WriteHeaders(*h)
 
 				fullBody := []byte{}
@@ -111,7 +123,7 @@ func main() {
 				trailers := headers.NewHeaders()
 				out := sha256.Sum256(fullBody)
 				trailers.Set("X-Content-SHA256", toStr(out[:]))
-				trailers.Set("X-Content-Length", fmt.Sprintf("%d",len(fullBody))) 
+				trailers.Set("X-Content-Length", fmt.Sprintf("%d", len(fullBody)))
 				w.WriteHeaders(*trailers)
 				return
 			}
