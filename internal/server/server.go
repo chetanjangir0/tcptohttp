@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"chetanhttpserver/internal/request"
 	"chetanhttpserver/internal/response"
 	"fmt"
@@ -20,40 +19,21 @@ type HandlerError struct {
 	Message string
 }
 
-type Handler func(w io.Writer, r *request.Request) *HandlerError
+type Handler func(w *response.Writer, r *request.Request) 
 
 
 func runConnection(s *Server, conn io.ReadWriteCloser) {
 	defer conn.Close() // only closing this conn not the server
 
-	headers := response.GetDefaultHeaders(0)
+	responseWriter := response.NewWriter(conn)
 	r, err := request.RequestFromReader(conn)
 	if err != nil {
-		response.WriteStatusLine(conn, response.StatusBadRequest) 
-		response.WriteHeaders(conn, headers) 
+		responseWriter.WriteStatusLine(response.StatusBadRequest) 
 		return
 	}
 
-	// we let the handler write into this write buffer
-	// (instead of directly into conn) so that 
-	// we can calculate more info about the body (eg content-length) for headers
-	writer := bytes.NewBuffer([]byte{})
-	handleError := s.handler(writer, r)
+	s.handler(responseWriter, r)
 
-	var body []byte = nil
-	var status response.StatusCode= response.StatusOK
-
-	if handleError != nil {
-		body = []byte(handleError.Message)
-		status = handleError.StatusCode
-	} else {
-		body = writer.Bytes()
-	}
-
-	headers.Replace("Content-length", fmt.Sprintf("%d", len(body)))
-	response.WriteStatusLine(conn, status) 
-	response.WriteHeaders(conn, headers) 
-	conn.Write(body)
 }
 
 func runServer(s *Server, listener net.Listener) {
